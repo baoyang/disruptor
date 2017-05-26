@@ -58,7 +58,7 @@ public final class NoOpEventProcessor implements EventProcessor
     @Override
     public void run()
     {
-        if (!running.compareAndSet(false, true))
+        if (!running.compareAndSet(false, true)) //如果启动,什么都不做
         {
             throw new IllegalStateException("Thread is already running");
         }

@@ -15,16 +15,15 @@
  */
 package com.lmax.disruptor.util;
 
+import com.lmax.disruptor.EventProcessor;
+import com.lmax.disruptor.Sequence;
+import sun.misc.Unsafe;
+
 import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedExceptionAction;
-
-import sun.misc.Unsafe;
-
-import com.lmax.disruptor.EventProcessor;
-import com.lmax.disruptor.Sequence;
 
 /**
  * Set of common functions used by the Disruptor
@@ -38,7 +37,7 @@ public final class Util
      * @param x Value to round up
      * @return The next power of 2 from x inclusive
      */
-    public static int ceilingNextPowerOfTwo(final int x)
+    public static int ceilingNextPowerOfTwo(final int x) //返回最近比X大的2的次方数
     {
         return 1 << (32 - Integer.numberOfLeadingZeros(x - 1));
     }
@@ -80,7 +79,7 @@ public final class Util
      * @param processors for which to get the sequences
      * @return the array of {@link Sequence}s
      */
-    public static Sequence[] getSequencesFor(final EventProcessor... processors)
+    public static Sequence[] getSequencesFor(final EventProcessor... processors) //从时间处理器中拿出sequence[]
     {
         Sequence[] sequences = new Sequence[processors.length];
         for (int i = 0; i < sequences.length; i++)
@@ -103,7 +102,7 @@ public final class Util
                 {
                     Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
                     theUnsafe.setAccessible(true);
-                    return (Unsafe) theUnsafe.get(null);
+                    return (Unsafe) theUnsafe.get(null); //通过静态方法获取Unsafe实例
                 }
             };
 
@@ -154,7 +153,7 @@ public final class Util
      * @param i Value to calculate log2 for.
      * @return The log2 value
      */
-    public static int log2(int i)
+    public static int log2(int i) //二进制位数  log2(0x0001001011110) = 10
     {
         int r = 0;
         while ((i >>= 1) != 0)

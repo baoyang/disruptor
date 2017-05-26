@@ -1,5 +1,12 @@
 package com.lmax.disruptor;
 
+/**
+    EventSink主要是提供发布事件(就是往队列上放数据)的功能，接口上定义了以各种姿势发布事件的方法。
+    EventSink接口的主要方法都是发布Event，发布一个Event的流程是：
+    申请下一个Sequence->申请成功则获取对应槽的Event->初始化并填充对应槽的Event->发布Event。
+    初始化、填充Event是通过实现EventTranslator，EventTranslatorOneArg，EventTranslatorTwoArg，
+    EventTranslatorThreeArg，EventTranslatorVararg这些EventTranslator来做的。
+*/
 public interface EventSink<E>
 {
     /**
@@ -7,7 +14,7 @@ public interface EventSink<E>
      * claiming the next sequence, getting the current (uninitialised)
      * event from the ring buffer and publishing the claimed sequence
      * after translation.
-     *
+     *申请下一个Sequence->申请成功则获取对应槽的Event->利用translator初始化并填充对应槽的Event->发布Event
      * @param translator The user specified translation for the event
      */
     void publishEvent(EventTranslator<E> translator);
@@ -18,9 +25,9 @@ public interface EventSink<E>
      * event from the ring buffer and publishing the claimed sequence
      * after translation.  Will return false if specified capacity
      * was not available.
-     *
+     * 尝试申请下一个Sequence->申请成功则获取对应槽的Event->利用translator初始化并填充对应槽的Event->发布Event
      * @param translator The user specified translation for the event
-     * @return true if the value was published, false if there was insufficient
+     * @return true if the value was published, false if there was insufficient 若空间不足，则立即失败返回
      * capacity.
      */
     boolean tryPublishEvent(EventTranslator<E> translator);
@@ -121,7 +128,7 @@ public interface EventSink<E>
      * buffer will be a field (either explicitly or captured anonymously),
      * therefore this call will require an instance of the translator
      * for each value that is to be inserted into the ring buffer.
-     *
+     * 包括申请多个Sequence->申请成功则获取对应槽的Event->利用每个translator初始化并填充每个对应槽的Event->发布Event
      * @param translators The user specified translation for each event
      */
     void publishEvents(EventTranslator<E>[] translators);
@@ -236,8 +243,8 @@ public interface EventSink<E>
      * @see #publishEvents(EventTranslator[])
      */
     <A, B> void publishEvents(
-        EventTranslatorTwoArg<E, A, B> translator, int batchStartsAt, int batchSize, A[] arg0,
-        B[] arg1);
+            EventTranslatorTwoArg<E, A, B> translator, int batchStartsAt, int batchSize, A[] arg0,
+            B[] arg1);
 
     /**
      * Allows two user supplied arguments per event.
@@ -264,8 +271,8 @@ public interface EventSink<E>
      * @see #tryPublishEvents(EventTranslator[])
      */
     <A, B> boolean tryPublishEvents(
-        EventTranslatorTwoArg<E, A, B> translator, int batchStartsAt, int batchSize,
-        A[] arg0, B[] arg1);
+            EventTranslatorTwoArg<E, A, B> translator, int batchStartsAt, int batchSize,
+            A[] arg0, B[] arg1);
 
     /**
      * Allows three user supplied arguments per event.
@@ -290,8 +297,8 @@ public interface EventSink<E>
      * @see #publishEvents(EventTranslator[])
      */
     <A, B, C> void publishEvents(
-        EventTranslatorThreeArg<E, A, B, C> translator, int batchStartsAt, int batchSize,
-        A[] arg0, B[] arg1, C[] arg2);
+            EventTranslatorThreeArg<E, A, B, C> translator, int batchStartsAt, int batchSize,
+            A[] arg0, B[] arg1, C[] arg2);
 
     /**
      * Allows three user supplied arguments per event.
@@ -320,8 +327,8 @@ public interface EventSink<E>
      * @see #publishEvents(EventTranslator[])
      */
     <A, B, C> boolean tryPublishEvents(
-        EventTranslatorThreeArg<E, A, B, C> translator, int batchStartsAt,
-        int batchSize, A[] arg0, B[] arg1, C[] arg2);
+            EventTranslatorThreeArg<E, A, B, C> translator, int batchStartsAt,
+            int batchSize, A[] arg0, B[] arg1, C[] arg2);
 
     /**
      * Allows a variable number of user supplied arguments per event.

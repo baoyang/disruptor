@@ -22,9 +22,10 @@ import java.util.concurrent.locks.LockSupport;
  * eventually sleep (<code>LockSupport.parkNanos(1)</code>) for the minimum
  * number of nanos the OS and JVM will allow while the
  * {@link com.lmax.disruptor.EventProcessor}s are waiting on a barrier.
- * <p>
+ * <p>实现方法是先自旋，不行再临时让出调度(yield)，不行再短暂的阻塞等待。
  * This strategy is a good compromise between performance and CPU resource.
  * Latency spikes can occur after quiet periods.
+ * 对于既想取得高性能，由不想太浪费CPU资源的场景，这个策略是一种比较好的折中方案。使用这个方案可能会出现延迟波动。
  */
 public final class SleepingWaitStrategy implements WaitStrategy
 {
@@ -44,7 +45,7 @@ public final class SleepingWaitStrategy implements WaitStrategy
 
     @Override
     public long waitFor(
-        final long sequence, Sequence cursor, final Sequence dependentSequence, final SequenceBarrier barrier)
+            final long sequence, Sequence cursor, final Sequence dependentSequence, final SequenceBarrier barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;
@@ -68,18 +69,18 @@ public final class SleepingWaitStrategy implements WaitStrategy
     {
         barrier.checkAlert();
 
-        if (counter > 100)
+        if (counter > 100)  //从指定的重试次数(默认是200)重试到剩下100次，这个过程是自旋。
         {
             --counter;
         }
-        else if (counter > 0)
+        else if (counter > 0)  //然后尝试100次让出处理器动作。
         {
             --counter;
             Thread.yield();
         }
         else
         {
-            LockSupport.parkNanos(1L);
+            LockSupport.parkNanos(1L); //然后尝试阻塞1纳秒。
         }
 
         return counter;

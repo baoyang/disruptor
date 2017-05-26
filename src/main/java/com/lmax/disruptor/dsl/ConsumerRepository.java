@@ -32,7 +32,7 @@ class ConsumerRepository<T> implements Iterable<ConsumerInfo>
         new IdentityHashMap<Sequence, ConsumerInfo>();
     private final Collection<ConsumerInfo> consumerInfos = new ArrayList<ConsumerInfo>();
 
-    public void add(
+    public void add( // 添加事件处理者(Event模式)、事件处理器和序列栅栏到仓库中。
         final EventProcessor eventprocessor,
         final EventHandler<? super T> handler,
         final SequenceBarrier barrier)
@@ -43,14 +43,14 @@ class ConsumerRepository<T> implements Iterable<ConsumerInfo>
         consumerInfos.add(consumerInfo);
     }
 
-    public void add(final EventProcessor processor)
+    public void add(final EventProcessor processor) // 添加事件处理者(Event模式)到仓库中。
     {
         final EventProcessorInfo<T> consumerInfo = new EventProcessorInfo<T>(processor, null, null);
         eventProcessorInfoBySequence.put(processor.getSequence(), consumerInfo);
         consumerInfos.add(consumerInfo);
     }
 
-    public void add(final WorkerPool<T> workerPool, final SequenceBarrier sequenceBarrier)
+    public void add(final WorkerPool<T> workerPool, final SequenceBarrier sequenceBarrier) // 添加事件处理者(Work模式)和序列栅栏到仓库中。
     {
         final WorkerPoolInfo<T> workerPoolInfo = new WorkerPoolInfo<T>(workerPool, sequenceBarrier);
         consumerInfos.add(workerPoolInfo);
@@ -61,7 +61,7 @@ class ConsumerRepository<T> implements Iterable<ConsumerInfo>
     }
 
     public Sequence[] getLastSequenceInChain(boolean includeStopped)
-    {
+    { //获取当前已经消费到RingBuffer上事件队列末尾的事件处理者的序列，可通过参数指定是否要包含已经停止的事件处理者。
         List<Sequence> lastSequence = new ArrayList<Sequence>();
         for (ConsumerInfo consumerInfo : consumerInfos)
         {
@@ -92,7 +92,7 @@ class ConsumerRepository<T> implements Iterable<ConsumerInfo>
     }
 
     public void unMarkEventProcessorsAsEndOfChain(final Sequence... barrierEventProcessors)
-    {
+    {  // 重置已经处理到事件队列末尾的事件处理者的状态。
         for (Sequence barrierEventProcessor : barrierEventProcessors)
         {
             getEventProcessorInfo(barrierEventProcessor).markAsUsedInBarrier();

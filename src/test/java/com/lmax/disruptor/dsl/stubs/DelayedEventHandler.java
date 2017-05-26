@@ -58,7 +58,7 @@ public class DelayedEventHandler implements EventHandler<TestEvent>, LifecycleAw
     private void waitForAndSetFlag(final boolean newValue)
     {
         while (!stopped && !Thread.currentThread().isInterrupted() &&
-            !readyToProcessEvent.compareAndSet(!newValue, newValue))
+            !readyToProcessEvent.compareAndSet(!newValue, newValue)) //没有停止没有中断并且CAS不成功
         {
             Thread.yield();
         }

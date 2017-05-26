@@ -17,14 +17,14 @@ package com.lmax.disruptor;
 
 /**
  * EventProcessors waitFor events to become available for consumption from the {@link RingBuffer}
- * <p>
- * An EventProcessor will generally be associated with a Thread for execution.
+ * <p>事件处理器会等待RingBuffer中的事件变为可用(可处理)，然后处理可用的事件。
+ * An EventProcessor will generally be associated with a Thread for execution.一个事件处理器通常会关联一个线程。
  */
 public interface EventProcessor extends Runnable
 {
     /**
      * Get a reference to the {@link Sequence} being used by this {@link EventProcessor}.
-     *
+     * 获取一个事件处理器使用的序列引用。
      * @return reference to the {@link Sequence} for this {@link EventProcessor}
      */
     Sequence getSequence();
@@ -33,7 +33,7 @@ public interface EventProcessor extends Runnable
      * Signal that this EventProcessor should stop when it has finished consuming at the next clean break.
      * It will call {@link SequenceBarrier#alert()} to notify the thread to check status.
      */
-    void halt();
+    void halt(); //暂停
 
     boolean isRunning();
 }

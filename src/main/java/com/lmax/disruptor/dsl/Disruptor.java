@@ -15,20 +15,7 @@
  */
 package com.lmax.disruptor.dsl;
 
-import com.lmax.disruptor.BatchEventProcessor;
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.EventProcessor;
-import com.lmax.disruptor.EventTranslator;
-import com.lmax.disruptor.EventTranslatorOneArg;
-import com.lmax.disruptor.ExceptionHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.Sequence;
-import com.lmax.disruptor.SequenceBarrier;
-import com.lmax.disruptor.TimeoutException;
-import com.lmax.disruptor.WaitStrategy;
-import com.lmax.disruptor.WorkHandler;
-import com.lmax.disruptor.WorkerPool;
+import com.lmax.disruptor.*;
 import com.lmax.disruptor.util.Util;
 
 import java.util.concurrent.Executor;
@@ -60,10 +47,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class Disruptor<T>
 {
     private final RingBuffer<T> ringBuffer;
-    private final Executor executor;
-    private final ConsumerRepository<T> consumerRepository = new ConsumerRepository<T>();
-    private final AtomicBoolean started = new AtomicBoolean(false);
-    private ExceptionHandler<? super T> exceptionHandler = new ExceptionHandlerWrapper<T>();
+    private final Executor executor;  // 用于执行事件处理器的线程池
+    private final ConsumerRepository<T> consumerRepository = new ConsumerRepository<T>(); //事件处理器的集合
+    private final AtomicBoolean started = new AtomicBoolean(false); // 启动时检查,只能启动一次
+    private ExceptionHandler<? super T> exceptionHandler = new ExceptionHandlerWrapper<T>(); //异常处理器
 
     /**
      * Create a new Disruptor. Will default to {@link com.lmax.disruptor.BlockingWaitStrategy} and
@@ -509,30 +496,30 @@ public class Disruptor<T>
         final Sequence[] barrierSequences,
         final EventHandler<? super T>[] eventHandlers)
     {
-        checkNotStarted();
+        checkNotStarted(); // 确保在容器启动前设置
 
-        final Sequence[] processorSequences = new Sequence[eventHandlers.length];
-        final SequenceBarrier barrier = ringBuffer.newBarrier(barrierSequences);
+        final Sequence[] processorSequences = new Sequence[eventHandlers.length];  // 存放游标的数组
+        final SequenceBarrier barrier = ringBuffer.newBarrier(barrierSequences); // 获取前置的序号关卡
 
         for (int i = 0, eventHandlersLength = eventHandlers.length; i < eventHandlersLength; i++)
         {
-            final EventHandler<? super T> eventHandler = eventHandlers[i];
+            final EventHandler<? super T> eventHandler = eventHandlers[i]; // 封装为批量事件处理器BatchEventProcessor，其实现了Runnable接口，所以可以放到executor去执行处理逻辑；处理器还会自动建立一个序号Sequence。
 
             final BatchEventProcessor<T> batchEventProcessor =
                 new BatchEventProcessor<T>(ringBuffer, barrier, eventHandler);
 
             if (exceptionHandler != null)
             {
-                batchEventProcessor.setExceptionHandler(exceptionHandler);
+                batchEventProcessor.setExceptionHandler(exceptionHandler); // 如果有则设置异常处理器
             }
 
-            consumerRepository.add(batchEventProcessor, eventHandler, barrier);
+            consumerRepository.add(batchEventProcessor, eventHandler, barrier); // 添加到消费者仓库，会先封装为EventProcessorInfo对象（表示事件处理的一个阶段），
             processorSequences[i] = batchEventProcessor.getSequence();
         }
 
-        updateGatingSequencesForNextInChain(barrierSequences, processorSequences);
+        updateGatingSequencesForNextInChain(barrierSequences, processorSequences); // 如果有前置关卡，则取消之前的前置关卡对应的EventProcessor 的 链的终点标记。
 
-        return new EventHandlerGroup<T>(this, consumerRepository, processorSequences);
+        return new EventHandlerGroup<T>(this, consumerRepository, processorSequences); // EventHandlerGroup是一组EventProcessor，作为disruptor的一部分，提供DSL形式的方法，作为方法链的起点，用于设置事件处理器。
     }
 
     private void updateGatingSequencesForNextInChain(Sequence[] barrierSequences, Sequence[] processorSequences)
@@ -549,7 +536,7 @@ public class Disruptor<T>
     }
 
     EventHandlerGroup<T> createEventProcessors(
-        final Sequence[] barrierSequences, final EventProcessorFactory<T>[] processorFactories)
+            final Sequence[] barrierSequences, final EventProcessorFactory<T>[] processorFactories)
     {
         final EventProcessor[] eventProcessors = new EventProcessor[processorFactories.length];
         for (int i = 0; i < processorFactories.length; i++)
@@ -561,7 +548,7 @@ public class Disruptor<T>
     }
 
     EventHandlerGroup<T> createWorkerPool(
-        final Sequence[] barrierSequences, final WorkHandler<? super T>[] workHandlers)
+            final Sequence[] barrierSequences, final WorkHandler<? super T>[] workHandlers)
     {
         final SequenceBarrier sequenceBarrier = ringBuffer.newBarrier(barrierSequences);
         final WorkerPool<T> workerPool = new WorkerPool<T>(ringBuffer, sequenceBarrier, exceptionHandler, workHandlers);

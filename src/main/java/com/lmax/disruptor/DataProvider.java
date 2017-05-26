@@ -15,6 +15,11 @@
  */
 package com.lmax.disruptor;
 
+/**
+ * 数据提供器
+ * 第一个是在生产时,这个Event对象需要被生产者获取往里面填充数据,
+ * 第二个是在消费时,获取这个Event对象用于消费
+ */
 public interface DataProvider<T>
 {
     T get(long sequence);

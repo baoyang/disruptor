@@ -15,15 +15,24 @@
  */
 package com.lmax.disruptor;
 
-import static java.util.Arrays.copyOf;
-
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
+import static java.util.Arrays.copyOf;
 
 /**
  * Provides static methods for managing a {@link SequenceGroup} object.
+ * 是针对SequenceGroup的帮助类，里面提供了addSequences和removeSequence方法，都是原子操作。
  */
 class SequenceGroups
 {
+    /**
+    * 原子添加sequences
+    *
+    * @param holder 原子更新的域所属的类对象
+    * @param updater 原子更新的域对象
+    * @param cursor 定位
+    * @param sequencesToAdd 要添加的sequences
+    */
     static <T> void addSequences(
         final T holder,
         final AtomicReferenceFieldUpdater<T, Sequence[]> updater,
@@ -35,13 +44,13 @@ class SequenceGroups
         Sequence[] currentSequences;
 
         do
-        {
+        {  //在更新成功之前，一直重新读取currentSequences，扩充为添加所有sequence之后的updatedSequences
             currentSequences = updater.get(holder);
             updatedSequences = copyOf(currentSequences, currentSequences.length + sequencesToAdd.length);
             cursorSequence = cursor.getCursor();
 
             int index = currentSequences.length;
-            for (Sequence sequence : sequencesToAdd)
+            for (Sequence sequence : sequencesToAdd) //将新的sequences的值设置为cursorSequence
             {
                 sequence.set(cursorSequence);
                 updatedSequences[index++] = sequence;
@@ -49,13 +58,20 @@ class SequenceGroups
         }
         while (!updater.compareAndSet(holder, currentSequences, updatedSequences));
 
-        cursorSequence = cursor.getCursor();
+        cursorSequence = cursor.getCursor(); // 这儿没有看懂? todo 为什么还要更新一次,更新完取最新的再更新一次?
         for (Sequence sequence : sequencesToAdd)
         {
             sequence.set(cursorSequence);
         }
     }
 
+    /**
+     * 原子移除所有指定的sequence
+     * @param holder 原子更新的域所属的类对象
+     * @param sequenceUpdater 原子更新的域对象
+     * @param sequence 要移除的sequence
+     * @return 是否有更新
+     */
     static <T> boolean removeSequence(
         final T holder,
         final AtomicReferenceFieldUpdater<T, Sequence[]> sequenceUpdater,
@@ -93,7 +109,7 @@ class SequenceGroups
         return numToRemove != 0;
     }
 
-    private static <T> int countMatching(T[] values, final T toMatch)
+    private static <T> int countMatching(T[] values, final T toMatch) //获取匹配数
     {
         int numToRemove = 0;
         for (T value : values)

@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
-public class BasicExecutor implements Executor
+public class BasicExecutor implements Executor //基本线程池
 {
     private final ThreadFactory factory;
     private final Queue<Thread> threads = new ConcurrentLinkedQueue<Thread>();
@@ -44,7 +44,7 @@ public class BasicExecutor implements Executor
     {
         final StringBuilder sb = new StringBuilder();
 
-        final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+        final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean(); //线程管理信息
 
         for (Thread t : threads)
         {

@@ -17,7 +17,7 @@ package com.lmax.disruptor;
 
 /**
  * An aggregate collection of {@link EventHandler}s that get called in sequence for each event.
- *
+ * 聚合多个EventHandler
  * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an event.
  */
 public final class AggregateEventHandler<T>

@@ -15,11 +15,10 @@
  */
 package com.lmax.disruptor;
 
-import java.util.concurrent.locks.LockSupport;
-
+import com.lmax.disruptor.util.Util;
 import sun.misc.Unsafe;
 
-import com.lmax.disruptor.util.Util;
+import java.util.concurrent.locks.LockSupport;
 
 
 /**
@@ -30,19 +29,24 @@ import com.lmax.disruptor.util.Util;
  * to {@link Sequencer#next()}, to determine the highest available sequence that can be read, then
  * {@link Sequencer#getHighestPublishedSequence(long, long)} should be used.
  */
+ /*
+ Multi模式与Single模式相比，有一个不同的地方就在于availableBuffer这个整型数组，这个数组大小为bufferSize，
+ 用来标识RingBuffer中每个槽位的状态，其中存放的值，就是生产者的每个序列当前绕环形数组的圈数，
+ 主要是在publish的时候会更新这个值
+ */
 public final class MultiProducerSequencer extends AbstractSequencer
 {
     private static final Unsafe UNSAFE = Util.getUnsafe();
-    private static final long BASE = UNSAFE.arrayBaseOffset(int[].class);
-    private static final long SCALE = UNSAFE.arrayIndexScale(int[].class);
+    private static final long BASE = UNSAFE.arrayBaseOffset(int[].class); // 返回当前数组第一个元素地址相对于数组起始地址的偏移值
+    private static final long SCALE = UNSAFE.arrayIndexScale(int[].class); //返回当前数组一个元素占用的字节数,在本例中返回4。
 
     private final Sequence gatingSequenceCache = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
 
     // availableBuffer tracks the state of each ringbuffer slot
     // see below for more details on the approach
-    private final int[] availableBuffer;
-    private final int indexMask;
-    private final int indexShift;
+    private final int[] availableBuffer;  // availableBuffer是用来记录每一个ringbuffer槽的状态。
+    private final int indexMask; //循环掩码
+    private final int indexShift; //二进制位数
 
     /**
      * Construct a Sequencer with the selected wait strategy and buffer size.
@@ -56,11 +60,11 @@ public final class MultiProducerSequencer extends AbstractSequencer
         availableBuffer = new int[bufferSize];
         indexMask = bufferSize - 1;
         indexShift = Util.log2(bufferSize);
-        initialiseAvailableBuffer();
+        initialiseAvailableBuffer(); //初始化availableBuffer 都为-1
     }
 
     /**
-     * @see Sequencer#hasAvailableCapacity(int)
+     * @see Sequencer#hasAvailableCapacity(int) 是否可以申请requiredCapacity个空间
      */
     @Override
     public boolean hasAvailableCapacity(final int requiredCapacity)
@@ -107,6 +111,10 @@ public final class MultiProducerSequencer extends AbstractSequencer
 
     /**
      * @see Sequencer#next(int)
+     * 与Single模式的next方法大同小异，但是也有一些不同的地方，我们一起看下
+     *  1、生产者当前的序列是通过cursor来获取的，没有Single模式下的nextValue
+     *  2、出现追尾时候时的处理，与Single模式一致
+     *  3、申请序列成功之后，会设置cursor的值为申请后的值
      */
     @Override
     public long next(int n)
@@ -121,26 +129,26 @@ public final class MultiProducerSequencer extends AbstractSequencer
 
         do
         {
-            current = cursor.get();
-            next = current + n;
+            current = cursor.get(); //当前游标
+            next = current + n;  //要发布的游标
 
-            long wrapPoint = next - bufferSize;
-            long cachedGatingSequence = gatingSequenceCache.get();
+            long wrapPoint = next - bufferSize; //覆盖点
+            long cachedGatingSequence = gatingSequenceCache.get(); //消费者中处理序列最小的前一个序列
 
-            if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current)
+            if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current)  //缓存已满或者处理器处理异常时
             {
                 long gatingSequence = Util.getMinimumSequence(gatingSequences, current);
 
-                if (wrapPoint > gatingSequence)
+                if (wrapPoint > gatingSequence) //缓存满时，继续再次尝试
                 {
                     waitStrategy.signalAllWhenBlocking();
                     LockSupport.parkNanos(1); // TODO, should we spin based on the wait strategy?
                     continue;
                 }
 
-                gatingSequenceCache.set(gatingSequence);
+                gatingSequenceCache.set(gatingSequence); //更新当前生产者发布的的最大序列
             }
-            else if (cursor.compareAndSet(current, next))
+            else if (cursor.compareAndSet(current, next)) //成功获取到发布序列并设置当前游标成功时跳出循环
             {
                 break;
             }
@@ -206,7 +214,7 @@ public final class MultiProducerSequencer extends AbstractSequencer
             setAvailableBufferValue(i, -1);
         }
 
-        setAvailableBufferValue(0, -1);
+        setAvailableBufferValue(0, -1); //todo 为什么不在循环里写完?
     }
 
     /**
@@ -251,15 +259,19 @@ public final class MultiProducerSequencer extends AbstractSequencer
      * buffer), when we have new data and successfully claimed a slot we can simply
      * write over the top.
      */
+     /*
+         我们看到Multi模式与Single模式不一样，发布时没有设置cursor的值，而是对availableBuffer对应的槽位进行更新，
+         而消费者在获取最大的有效序列时，也是通过与availableBuffer的对应序列的值进行比较进行判断
+     */
     private void setAvailable(final long sequence)
     {
         setAvailableBufferValue(calculateIndex(sequence), calculateAvailabilityFlag(sequence));
     }
 
-    private void setAvailableBufferValue(int index, int flag)
+    private void setAvailableBufferValue(int index, int flag) //位置和值
     {
         long bufferAddress = (index * SCALE) + BASE;
-        UNSAFE.putOrderedInt(availableBuffer, bufferAddress, flag);
+        UNSAFE.putOrderedInt(availableBuffer, bufferAddress, flag);  //设置值 并且马上写入主存,偏移量bufferAddress
     }
 
     /**
@@ -288,12 +300,12 @@ public final class MultiProducerSequencer extends AbstractSequencer
         return availableSequence;
     }
 
-    private int calculateAvailabilityFlag(final long sequence)
+    private int calculateAvailabilityFlag(final long sequence) //环形队列中的圈数
     {
         return (int) (sequence >>> indexShift);
     }
 
-    private int calculateIndex(final long sequence)
+    private int calculateIndex(final long sequence) //环形队列中的位置
     {
         return ((int) sequence) & indexMask;
     }

@@ -30,13 +30,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class BatchEventProcessor<T>
     implements EventProcessor
 {
-    private final AtomicBoolean running = new AtomicBoolean(false);
-    private ExceptionHandler<? super T> exceptionHandler = new FatalExceptionHandler();
-    private final DataProvider<T> dataProvider;
-    private final SequenceBarrier sequenceBarrier;
-    private final EventHandler<? super T> eventHandler;
-    private final Sequence sequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
-    private final TimeoutHandler timeoutHandler;
+    private final AtomicBoolean running = new AtomicBoolean(false); //表示当前事件处理器的运行状态
+    private ExceptionHandler<? super T> exceptionHandler = new FatalExceptionHandler();  //异常处理器
+    private final DataProvider<T> dataProvider;  //数据提供者(RingBuffer)
+    private final SequenceBarrier sequenceBarrier; //序列栅栏
+    private final EventHandler<? super T> eventHandler; //真正处理事件的回调接口
+    private final Sequence sequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE); //事件处理器使用的序列。
+    private final TimeoutHandler timeoutHandler;   //超时处理器
     private final BatchStartAware batchStartAware;
 
     /**
@@ -74,10 +74,10 @@ public final class BatchEventProcessor<T>
     }
 
     @Override
-    public void halt()
+    public void halt() //暂停
     {
-        running.set(false);
-        sequenceBarrier.alert();
+        running.set(false);//设置运行状态为false
+        sequenceBarrier.alert();//通知序列栅栏
     }
 
     @Override
@@ -109,13 +109,13 @@ public final class BatchEventProcessor<T>
     @Override
     public void run()
     {
-        if (!running.compareAndSet(false, true))
+        if (!running.compareAndSet(false, true))  // 确保一次只有一个线程执行此方法，这样访问自身的序号就不要加锁
         {
             throw new IllegalStateException("Thread is already running");
         }
-        sequenceBarrier.clearAlert();
+        sequenceBarrier.clearAlert(); //清空alerted标志
 
-        notifyStart();
+        notifyStart(); //如果实现了LifecycleAware，触发onStart事件
 
         T event = null;
         long nextSequence = sequence.get() + 1L;
@@ -125,33 +125,37 @@ public final class BatchEventProcessor<T>
             {
                 try
                 {
+                    // 从它的前置序号关卡获取下一个可处理的事件序号。
+                    // 如果这个事件处理器不依赖于其他的事件处理器，则前置关卡就是生产者序号；
+                    // 如果这个事件处理器依赖于1个或多个事件处理器，那么这个前置关卡就是这些前置事件处理器中最慢的一个。
+                    // 通过这样，可以确保事件处理器不会超前处理地事件。
                     final long availableSequence = sequenceBarrier.waitFor(nextSequence);
                     if (batchStartAware != null)
                     {
                         batchStartAware.onBatchStart(availableSequence - nextSequence + 1);
                     }
 
-                    while (nextSequence <= availableSequence)
+                    while (nextSequence <= availableSequence)  // 处理一批事件
                     {
                         event = dataProvider.get(nextSequence);
                         eventHandler.onEvent(event, nextSequence, nextSequence == availableSequence);
                         nextSequence++;
                     }
 
-                    sequence.set(availableSequence);
+                    sequence.set(availableSequence); // 设置它自己最后处理的事件序号,这样依赖于它的处理器可以它处理刚处理过的事件
                 }
                 catch (final TimeoutException e)
                 {
-                    notifyTimeout(sequence.get());
+                    notifyTimeout(sequence.get()); // 获取事件序号超时处理
                 }
                 catch (final AlertException ex)
                 {
-                    if (!running.get())
+                    if (!running.get()) // 处理通知事件；检测是否要停止，如果非则继续处理事件
                     {
                         break;
                     }
                 }
-                catch (final Throwable ex)
+                catch (final Throwable ex) //如果发生异常，会调用exceptionHandler进行处理，流程并不会中断
                 {
                     exceptionHandler.handleEventException(ex, nextSequence, event);
                     sequence.set(nextSequence);

@@ -21,14 +21,15 @@ package com.lmax.disruptor;
  * <p>When publishing to the RingBuffer, provide an EventTranslator. The RingBuffer will select the next available
  * event by sequence and provide it to the EventTranslator (which should update the event), before publishing
  * the sequence update.</p>
- *
+ * 在发布事件时需要传一个事件转换的接口，内部用这个接口做一下数据到事件的转换.
+ * 具体的生产者可以实现这个接口，将需要发布的数据放到这个事件里面，一般是设置到事件的某个域上。
  * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an event.
  */
 public interface EventTranslator<T>
 {
     /**
      * Translate a data representation into fields set in given event
-     *
+     * 发布事件前要先获取对应位置上的旧事件，再用translator把新事件的属性转换到旧事件的属性，从而达到发布的目的。
      * @param event    into which the data should be translated.
      * @param sequence that is assigned to event.
      */

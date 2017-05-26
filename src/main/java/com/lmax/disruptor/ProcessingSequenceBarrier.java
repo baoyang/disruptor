@@ -22,11 +22,11 @@ package com.lmax.disruptor;
  */
 final class ProcessingSequenceBarrier implements SequenceBarrier
 {
-    private final WaitStrategy waitStrategy;
-    private final Sequence dependentSequence;
+    private final WaitStrategy waitStrategy;//等待策略。
+    private final Sequence dependentSequence;//依赖的其他消费者的Sequence序列组。这个域可能指向一个序列组。
     private volatile boolean alerted = false;
     private final Sequence cursorSequence;
-    private final Sequencer sequencer;
+    private final Sequencer sequencer;//生产者
 
     public ProcessingSequenceBarrier(
         final Sequencer sequencer,
@@ -34,9 +34,9 @@ final class ProcessingSequenceBarrier implements SequenceBarrier
         final Sequence cursorSequence,
         final Sequence[] dependentSequences)
     {
-        this.sequencer = sequencer;
-        this.waitStrategy = waitStrategy;
-        this.cursorSequence = cursorSequence;
+        this.sequencer = sequencer; //生产者序号控制器
+        this.waitStrategy = waitStrategy; //等待策略
+        this.cursorSequence = cursorSequence; //生产者序号
         if (0 == dependentSequences.length)
         {
             dependentSequence = cursorSequence;
@@ -48,19 +48,20 @@ final class ProcessingSequenceBarrier implements SequenceBarrier
     }
 
     @Override
-    public long waitFor(final long sequence)
+    public long waitFor(final long sequence) //该方法不保证总是返回未处理的序号；如果有更多的可处理序号时，返回的序号也可能是超过指定序号的。
         throws AlertException, InterruptedException, TimeoutException
     {
+        //先检测报警状态。
         checkAlert();
+        //然后根据等待策略来等待可用的序列值。
+        long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, this); // 通过等待策略来获取可处理事件序号，
 
-        long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, this);
-
-        if (availableSequence < sequence)
+        if (availableSequence < sequence)    // 这个方法不保证总是返回可处理的序号
         {
-            return availableSequence;
+            return availableSequence; //如果可用的序列值小于给定的序列，那么直接返回。
         }
-
-        return sequencer.getHighestPublishedSequence(sequence, availableSequence);
+        //否则，要返回能安全使用的最大的序列值。
+        return sequencer.getHighestPublishedSequence(sequence, availableSequence);   // 再通过生产者序号控制器返回最大的可处理序号
     }
 
     @Override
@@ -78,8 +79,8 @@ final class ProcessingSequenceBarrier implements SequenceBarrier
     @Override
     public void alert()
     {
-        alerted = true;
-        waitStrategy.signalAllWhenBlocking();
+        alerted = true; //设置通知标记
+        waitStrategy.signalAllWhenBlocking(); //如果有线程以阻塞的方式等待序列，将其唤醒。
     }
 
     @Override

@@ -33,7 +33,7 @@ import java.util.Arrays;
 public final class Histogram
 {
     // tracks the upper intervals of each of the buckets/bars
-    private final long[] upperBounds;
+    private final long[] upperBounds; //上升的long
     // tracks the count of the corresponding bucket
     private final long[] counts;
     // minimum value so far observed
@@ -127,7 +127,7 @@ public final class Histogram
         int high = upperBounds.length - 1;
 
         // do a classic binary search to find the high value
-        while (low < high)
+        while (low < high) //二分法查找
         {
             int mid = low + ((high - low) >> 1);
             if (upperBounds[mid] < value)
@@ -143,7 +143,7 @@ public final class Histogram
         // if the binary search found an eligible bucket, increment
         if (value <= upperBounds[high])
         {
-            counts[high]++;
+            counts[high]++; //计数
             trackRange(value);
 
             return true;
