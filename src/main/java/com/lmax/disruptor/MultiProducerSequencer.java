@@ -148,7 +148,7 @@ public final class MultiProducerSequencer extends AbstractSequencer
 
                 gatingSequenceCache.set(gatingSequence); //更新当前生产者发布的的最大序列
             }
-            else if (cursor.compareAndSet(current, next)) //成功获取到发布序列并设置当前游标成功时跳出循环
+            else if (cursor.compareAndSet(current, next)) //CAS发布
             {
                 break;
             }

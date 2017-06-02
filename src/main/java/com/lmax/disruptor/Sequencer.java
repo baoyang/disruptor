@@ -66,10 +66,6 @@ public interface Sequencer extends Cursored, Sequenced
      * are available to be read from the ring buffer given a list of sequences to track.
      基于给定的追踪序列创建一个序列栅栏，这个栅栏是提供给事件处理者在判断Ringbuffer上某个事件是否能处理时使用的。
 
-     SequenceBarrier我们之后会详讲，这里我们可以理解为用来协调消费者消费的对象。例如消费者A依赖于消费者B，就是消费者A一定要后于消费者B消费，
-     也就是A只能消费B消费过的，也就是A的sequence一定要小于B的。这个Sequence的协调，通过A和B设置在同一个SequenceBarrier上实现。
-     同时，我们还要保证所有的消费者只能消费被Publish过的。
-
      SequenceBarrier用来在消费者之间以及消费者和RingBuffer之间建立依赖关系。在Disruptor中，依赖关系实际上指的是Sequence的大小关系，
      消费者A依赖于消费者B指的是消费者A的Sequence一定要小于等于消费者B的Sequence，这种大小关系决定了处理某个消息的先后顺序。
      因为所有消费者都依赖于RingBuffer，所以消费者的Sequence一定小于等于RingBuffer中名为cursor的Sequence，

@@ -24,7 +24,7 @@ public interface EventProcessor extends Runnable
 {
     /**
      * Get a reference to the {@link Sequence} being used by this {@link EventProcessor}.
-     * 获取一个事件处理器使用的序列引用。
+     * 时间处理器当前处理的序列
      * @return reference to the {@link Sequence} for this {@link EventProcessor}
      */
     Sequence getSequence();

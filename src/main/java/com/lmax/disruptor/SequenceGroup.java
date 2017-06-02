@@ -114,7 +114,7 @@ public final class SequenceGroup extends Sequence
      * Adds a sequence to the sequence group after threads have started to publish to
      * the Disruptor.  It will set the sequences to cursor value of the ringBuffer
      * just after adding them.  This should prevent any nasty rewind/wrapping effects.
-     * 在线程已经开始往Disruptor上发布事件后，添加一个序列到序列组。调用这个方法后，会将新添加的序列的值设置为游标的值。
+     * 在线程已经开始往Disruptor上发布事件后，添加一个序列到序列组,放入最新的序列号
      *
      * @param cursored The data structure that the owner of this sequence group will
      *                 be pulling it's events from.

@@ -30,10 +30,10 @@ import java.util.Arrays;
  * 0-10 will fall into the first interval bar, values 11-20 will fall into the
  * second bar, and so on.</p>
  */
-public final class Histogram
+public final class Histogram //直方图,用于提供性能数据表示
 {
     // tracks the upper intervals of each of the buckets/bars
-    private final long[] upperBounds; //上升的long
+    private final long[] upperBounds; //上升的正数long
     // tracks the count of the corresponding bucket
     private final long[] counts;
     // minimum value so far observed
@@ -121,7 +121,7 @@ public final class Histogram
      * @param value for the observation to be added.
      * @return return true if in the range of intervals and successfully added observation; otherwise false.
      */
-    public boolean addObservation(final long value)
+    public boolean addObservation(final long value) //添加一个追踪值
     {
         int low = 0;
         int high = upperBounds.length - 1;
@@ -156,7 +156,7 @@ public final class Histogram
     /**
      * Track minimum and maximum observations
      */
-    private void trackRange(final long value)
+    private void trackRange(final long value) //追踪最大值,最小值
     {
         if (value < minValue)
         {
@@ -177,7 +177,7 @@ public final class Histogram
      * @param histogram from which to add the observation counts.
      * @throws IllegalArgumentException if interval count or values do not match exactly
      */
-    public void addObservations(final Histogram histogram)
+    public void addObservations(final Histogram histogram) //添加另外一个直方图
     {
         // validate the intervals
         if (upperBounds.length != histogram.upperBounds.length)
@@ -223,7 +223,7 @@ public final class Histogram
      *
      * @return the total number of recorded observations.
      */
-    public long getCount()
+    public long getCount() //获取数据和
     {
         long count = 0L;
 
@@ -265,7 +265,7 @@ public final class Histogram
      *
      * @return the mean of all recorded observations.
      */
-    public BigDecimal getMean()
+    public BigDecimal getMean() //计算所有记录观测值的平均值
     {
         // early exit to avoid divide by zero later
         if (0L == getCount())
@@ -274,7 +274,7 @@ public final class Histogram
         }
 
         // precalculate the initial lower bound; needed in the loop
-        long lowerBound = counts[0] > 0L ? minValue : 0L;
+        long lowerBound = counts[0] > 0L ? minValue : 0L; //最小值边界
         // use BigDecimal to avoid precision errors
         BigDecimal total = BigDecimal.ZERO;
 
@@ -329,7 +329,7 @@ public final class Histogram
      * @return the interval upper bound.
      * @throws IllegalArgumentException if factor &lt; 0.0 or factor &gt; 1.0
      */
-    public long getUpperBoundForFactor(final double factor)
+    public long getUpperBoundForFactor(final double factor) //获取百分比的下限边界
     {
         if (0.0d >= factor || factor >= 1.0d)
         {

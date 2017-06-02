@@ -18,7 +18,7 @@ package com.lmax.disruptor;
 import com.lmax.disruptor.util.Util;
 import sun.misc.Unsafe;
 
-//128字节 对象头16个字节+左7*8+1*8+右7*8
+//128字节 对象头8个字节+左7*8+1*8+右7*8
 class LhsPadding //左边缓存行填充.
 {
     protected long p1, p2, p3, p4, p5, p6, p7;
